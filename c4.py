@@ -15,7 +15,7 @@ class c4:
 	def __init__(self, root, grid):
 		self.root = root
 		self.grid = grid
-		self.root.populateNode(grid, RED)
+		self.root.populateNode(RED)
 		self.rAgent = c4Agent(RED)
 		self.yAgent = c4Agent(YELLOW)
 		
@@ -23,29 +23,35 @@ class c4:
 	def play(self, n_games, n_iterations):
 		for i in range(n_games):
 			win = False
-			print("-----  GAME %s  -----"%(str(i+1)))
+			print("-----  GAME %s  -----\n"%(str(i+1)))
 			curr = self.root
+			actions = []
 			for j in range(42):
+				curr = self.root
+				for action in actions:
+					curr = curr.children[action]
 				if j%2 == 0:  #red move
-					action, curr = self.rAgent.getBestMove(curr, n_iterations, self.root.n, self.grid)
+					action = self.rAgent.getBestMove(curr, n_iterations, self.root.n, self.grid)
+					actions.append(action)
 					self.grid.makeMove(RED, action)
 					self.grid.displayGrid()
 					if self.grid.checkWin():
-						print("RED WINS")
+						print("RED WINS\n")
 						win = True
 						break
 				else: #yellow move
 					# self.root.children[0].showParams()
-					action, curr = self.yAgent.getBestMove(curr, n_iterations, self.root.n, self.grid)
+					action = self.yAgent.getBestMove(curr, n_iterations, self.root.n, self.grid)
+					actions.append(action)
 					self.grid.makeMove(YELLOW, action)
 					self.grid.displayGrid()
 					if self.grid.checkWin():
-						print("YELLOW WINS")
+						print("YELLOW WINS\n")
 						win = True
 						break	
 			if not win:
-				print("DRAW")
-			print("-----  GAME %s ENDS  -----"%(str(i+1)))		
+				print("DRAW\n")
+			print("-----  GAME %s ENDS  -----\n"%(str(i+1)))		
 			self.grid.resetGrid()		
 
 
@@ -53,5 +59,5 @@ class c4:
 grid = c4Grid()
 root = Node(0, 0, None, grid.grid, grid.cols, grid.moveCnt)
 c4 = c4(root, grid)
-c4.play(5, 7)
+c4.play(5, 21)
 

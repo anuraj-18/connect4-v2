@@ -26,35 +26,51 @@ class Node:
 	def showParams(self):
 		print("Total score: %s"%(str(self.t)))
 		print("Total visits: %s"%(str(self.n)))
-		print("Grid: ", self.state)
-		print("Column values:", self.cols)
+		print("Grid: \n", self.state)
+		print("Column values: \n", self.cols)
 		print("Move count: %s"%(str(self.moveCnt)))
 		print("Is Terminal: %s"%(str(self.isTerminal)))
+
+	def showStates(self):
+		if len(self.children) == 0:
+			print(None)
+		else:
+			k = 0
+			for node in self.children:
+				print("---- State %s ----"%(str(k+1)))
+				print(node.state)
+				print()
+				k += 1
 
 	def goUp(self):
 		return self.parent
 
-	def populateNode(self, grid, player):
+	def populateNode(self, player):
 		if self.isTerminal:
 			return None
 
+		grid = c4Grid()
+
 		for i in range(self.n_actions):
 			cols = self.cols.copy()
-			if cols[i] == -1: #check if valid move 
+			if cols[i] <= -1: #check if valid move 
+				self.children.append(None)
 				continue
 
 			next_state = self.state.copy()  #copying next state for child node
 			next_state[cols[i]][i] = player  #making move for child node state
 			
-
 			node = Node(0, 0, self, next_state, cols, self.moveCnt+1)
+
 			if grid.checkWinVirtual(next_state, cols[i], i):
 				node.isTerminal = True
 				node.winColor = player #win for RED/YELLOW
+
 			if node.moveCnt == 42:
 				node.isTerminal = True
 				node.winColor = -1 #draw
-			cols[i] -= 1
+			node.cols[i] -= 1
+
 			self.children.append(node)
 
 	def calculateUCB(self, N):
@@ -69,13 +85,24 @@ class Node:
 		if self.isTerminal:
 			return None
 
-		for node in self.children:
-			ucbs.append(node.calculateUCB(N))
+		inc = 0
 
-		ucbs = np.array(ucbs)
-		index = np.argmax(ucbs)
-		max_node = self.children[index]
-		return max_node, index
+		for node in self.children:
+			if node:
+				ucbs.append(node.calculateUCB(N))
+			else:
+				ucbs.append(None)
+
+		max_ind = 0
+		max_val = -1*INF
+		l = len(self.children)
+		for i in range(l):
+			if ucbs[i] != None and ucbs[i] > max_val:
+				max_ind = i
+				max_val = ucbs[i]
+
+		max_node = self.children[max_ind]
+		return max_node, max_ind
 
 	def getMinUcbNode(self, N):
 		ucbs = []
@@ -84,12 +111,21 @@ class Node:
 			return None
 
 		for node in self.children:
-			ucbs.append(node.calculateUCB(N))
+			if node:
+				ucbs.append(node.calculateUCB(N))
+			else:
+				ucbs.append(None)
 
-		ucbs = np.array(ucbs)
-		index = np.argmin(ucbs)
-		min_node = self.children[index]
-		return min_node, index
+		min_ind = 0
+		min_val = INF+1
+		l = len(self.children)
+		for i in range(l):
+			if ucbs[i] != None and ucbs[i] < min_val:
+				min_ind = i
+				min_val = ucbs[i]
+
+		min_node = self.children[min_ind]
+		return min_node, min_ind
 
 	def checkLeaf(self):
 		if len(self.children) == 0:
@@ -141,23 +177,31 @@ class c4Agent:
 
 	def rollout(self, vgrid, vcols, moveCnt, colorToMove):
 		grid = c4Grid()
+
 		while True:
 			vgrid, vcols, x, y = self.makeRandomVirtualMove(vgrid, vcols, colorToMove)
-			colorToMove = self.switchColor(colorToMove)
+			
 			moveCnt += 1
 			if moveCnt == 42:
 				return 9 #draw reward
+
 			if grid.checkWinVirtual(vgrid, x, y):
 				return self.getReward(colorToMove) #return win 
+
+			colorToMove = self.switchColor(colorToMove)
 
 	def getBestMove(self, node, n_iterations, N, grid):
 		next_node = None
 		action = 0
 		count = 0 
 		if node.checkLeaf():
-			node.populateNode(c4Grid(), self.color)
+			node.populateNode(self.color)
 		curr = node
 		change = False
+
+		if node.isTerminal:
+			print("It is terminal node which has been wrongly sent.", node.winColor)
+			node.showParams()
 
 		while count < n_iterations:
 			if not change: #to reset curr to the initial node
@@ -205,7 +249,7 @@ class c4Agent:
 						change = False
 						continue
 
-					curr.populateNode(grid, colorToMove)
+					curr.populateNode(colorToMove)
 
 					if self.color == RED:
 						curr, _ = curr.getMaxUcbNode(N)
@@ -214,7 +258,9 @@ class c4Agent:
 
 					vgrid = curr.state.copy()
 					vcols = curr.cols.copy()
+
 					colorToMove = YELLOW if curr.moveCnt%2 == 1 else RED
+
 					print("Rollout in through expanded node")
 					reward = self.rollout(vgrid, vcols, curr.moveCnt, colorToMove)
 					print("Backpropagate reward")
@@ -239,5 +285,5 @@ class c4Agent:
 		else:
 			next_node, action = node.getMinUcbNode(N) 
 		print("sending action %s and next node"%(str(action)))
-		return action, next_node
+		return action
 
