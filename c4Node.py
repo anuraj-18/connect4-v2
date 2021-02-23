@@ -76,7 +76,7 @@ class Node:
 	def calculateUCB(self, N):
 		if self.n == 0:
 			return INF
-		ucb = (self.t/self.n) + (np.log(N)/self.n)**0.5
+		ucb = (self.t/self.n) + (2*(np.log(N)/self.n)**0.5)
 		return ucb
 
 	def getMaxUcbNode(self, N):
@@ -148,11 +148,11 @@ class c4Agent:
 
 	def getReward(self, winColor):
 		if winColor == -1:
-			return 9
+			return 1
 
 		if self.color == winColor:
-			return 20 #for win
-		return 0 #for loss
+			return 100 #for win
+		return -100 #for loss
 
 	def makeRandomVirtualMove(self, state, cols, color):
 		ok = True
@@ -183,52 +183,53 @@ class c4Agent:
 			
 			moveCnt += 1
 			if moveCnt == 42:
-				return 9 #draw reward
+				return 1 #draw reward
 
 			if grid.checkWinVirtual(vgrid, x, y):
 				return self.getReward(colorToMove) #return win 
 
 			colorToMove = self.switchColor(colorToMove)
 
-	def getBestMove(self, node, n_iterations, N, grid):
+	def getBestMove(self, actions, n_iterations, root, grid):
 		next_node = None
 		action = 0
 		count = 0 
+		node = root
+
+		for action in actions:
+			node = node.children[action]
+
 		if node.checkLeaf():
 			node.populateNode(self.color)
+
 		curr = node
 		change = False
-
-		if node.isTerminal:
-			print("It is terminal node which has been wrongly sent.", node.winColor)
-			node.showParams()
 
 		while count < n_iterations:
 			if not change: #to reset curr to the initial node
 				curr = node
 			if curr.checkLeaf():
-				print("in leaf node")
+				# print("in leaf node")
 				if curr.n == 0:
 					#start rollout
 					if curr.isTerminal:
-						print("is terminal in leaf")
+						# print("is terminal in leaf")
 						reward = self.getReward(curr.winColor)
-						print("Backpropagate reward")
+						# print("Backpropagate reward")
 						curr.backpropagate(reward)
-						N += 1
 						
 						count += 1
 						change = False
 						continue
 					else:
-						print("rollout in first visit")
+						# print("rollout in first visit")
 						vgrid = curr.state.copy()
 						vcols = curr.cols.copy()
 						colorToMove = YELLOW if curr.moveCnt%2 == 1 else RED
+						
 						reward = self.rollout(vgrid, vcols, curr.moveCnt, colorToMove)
-						print("Backpropagate reward")
+						# print("Backpropagate reward")
 						curr.backpropagate(reward)
-						N += 1
 						
 						count += 1
 						change = False
@@ -236,14 +237,13 @@ class c4Agent:
 				else:
 					#get node
 					colorToMove = YELLOW if curr.moveCnt%2 == 1 else RED
-					print("Expansion in visited node")
+					# print("Expansion in visited node")
 
 					if curr.isTerminal:
-						print("is terminal in leaf")
+						# print("is terminal node ")
 						reward = self.getReward(curr.winColor)
-						print("Backpropagate reward")
+						# print("Backpropagate reward")
 						curr.backpropagate(reward)
-						N += 1
 						
 						count += 1
 						change = False
@@ -252,20 +252,31 @@ class c4Agent:
 					curr.populateNode(colorToMove)
 
 					if self.color == RED:
-						curr, _ = curr.getMaxUcbNode(N)
+						# print("selecting max in expansion")
+						curr, _ = curr.getMaxUcbNode(root.n)
 					else:
-						curr, _ = curr.getMinUcbNode(N)
+						# print("selecting min in expansion")
+						curr, _ = curr.getMinUcbNode(root.n)
+
+					if curr.isTerminal:
+						# print("is terminal node after expansion")
+						reward = self.getReward(curr.winColor)
+						# print("Backpropagate reward")
+						curr.backpropagate(reward)
+						
+						count += 1
+						change = False
+						continue
 
 					vgrid = curr.state.copy()
 					vcols = curr.cols.copy()
 
 					colorToMove = YELLOW if curr.moveCnt%2 == 1 else RED
 
-					print("Rollout in through expanded node")
+					# print("Rollout in through expanded node")
 					reward = self.rollout(vgrid, vcols, curr.moveCnt, colorToMove)
-					print("Backpropagate reward")
+					# print("Backpropagate reward")
 					curr.backpropagate(reward)
-					N += 1
 					
 					count += 1
 					change = False
@@ -274,16 +285,17 @@ class c4Agent:
 			else:
 				change = True
 				if self.color == RED:
-					print("going to max node")
-					curr, _ = curr.getMaxUcbNode(N)
+					# print("going to max node")
+					curr, _ = curr.getMaxUcbNode(root.n)
 				else:
-					print("going to min ucb node")
-					curr, _ = curr.getMinUcbNode(N)
+					# print("going to min ucb node")
+					curr, _ = curr.getMinUcbNode(root.n)
 
 		if self.color == RED:
-			next_node, action = node.getMaxUcbNode(N)
+			next_node, action = node.getMaxUcbNode(root.n)
 		else:
-			next_node, action = node.getMinUcbNode(N) 
-		print("sending action %s and next node"%(str(action)))
-		return action
+			next_node, action = node.getMinUcbNode(root.n) 
+		# print("sending action %s and next node"%(str(action)))
+		# print("Total iterations", root.n)
+		return root, action
 

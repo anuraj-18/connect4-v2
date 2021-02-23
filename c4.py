@@ -27,11 +27,8 @@ class c4:
 			curr = self.root
 			actions = []
 			for j in range(42):
-				curr = self.root
-				for action in actions:
-					curr = curr.children[action]
 				if j%2 == 0:  #red move
-					action = self.rAgent.getBestMove(curr, n_iterations, self.root.n, self.grid)
+					self.root, action = self.rAgent.getBestMove(actions, n_iterations, self.root, self.grid)
 					actions.append(action)
 					self.grid.makeMove(RED, action)
 					self.grid.displayGrid()
@@ -40,8 +37,7 @@ class c4:
 						win = True
 						break
 				else: #yellow move
-					# self.root.children[0].showParams()
-					action = self.yAgent.getBestMove(curr, n_iterations, self.root.n, self.grid)
+					self.root, action = self.yAgent.getBestMove(actions, n_iterations, self.root, self.grid)
 					actions.append(action)
 					self.grid.makeMove(YELLOW, action)
 					self.grid.displayGrid()
@@ -59,5 +55,5 @@ class c4:
 grid = c4Grid()
 root = Node(0, 0, None, grid.grid, grid.cols, grid.moveCnt)
 c4 = c4(root, grid)
-c4.play(5, 21)
+c4.play(10, 1000)
 
