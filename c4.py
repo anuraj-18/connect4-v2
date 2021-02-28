@@ -1,7 +1,8 @@
 import numpy as np 
 import os
 
-from c4Node import Node, c4Agent
+from c4Node import Node 
+from c4Agent import c4Agent
 from c4Grid import c4Grid
 
 # import pdb 
