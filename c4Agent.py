@@ -61,9 +61,31 @@ class c4Agent:
 		action = 0
 		count = 0 
 		node = root
+		prev_node = root
+		color = YELLOW
 
 		for action in actions:
+			if not node: #check for when playing against human
+				state = prev_node.state.copy()
+				cols = prev_node.cols.copy()
+				moveCntCnt = prev_node.moveCnt.copy()
+				node = Node(0, 0, prev_node, state, cols, moveCnt)
+				node.state[cols[action]][action] = color
+				node.moveCnt += 1
+				grid = c4Grid()
+
+				if grid.checkWinVirtual(node.state, node.cols[action], action):
+					node.isTerminal = True
+					node.winColor = color 
+				if node.moveCnt == 42:
+					node.isTerminal = True
+					node.winColor = -1
+
+				node.cols[action] -= 1
+				break
+			prev_node = node 
 			node = node.children[action]
+			color = self.switchColor(color)
 
 		if node.checkLeaf():
 			node.populateNode(self.color)
