@@ -7,6 +7,9 @@ INF = 1000000
 
 RED = 2
 YELLOW = 1
+DRAW = -1
+
+MAX_MOVES = 42
 
 class Node:
 	def __init__(self, total_score, ni, parent, state, cols, moveCnt):
@@ -66,9 +69,9 @@ class Node:
 				node.isTerminal = True
 				node.winColor = player #win for RED/YELLOW
 
-			if node.moveCnt == 42:
+			elif node.moveCnt == MAX_MOVES:
 				node.isTerminal = True
-				node.winColor = -1 #draw
+				node.winColor = DRAW #draw
 			node.cols[i] -= 1
 
 			self.children.append(node)
@@ -76,7 +79,7 @@ class Node:
 	def calculateUCB(self, N):
 		if self.n == 0:
 			return INF
-		ucb = (self.t/self.n) + (2*(np.log(N)/self.n)**0.5)
+		ucb = (self.t/self.n) + (2*np.log(N)/self.n)**0.5
 		return ucb
 
 	def getMaxUcbNode(self, N):
@@ -102,7 +105,7 @@ class Node:
 				max_val = ucbs[i]
 
 		max_node = self.children[max_ind]
-		return max_node, max_ind
+		return max_node, max_ind, ucbs
 
 	def getMinUcbNode(self, N):
 		ucbs = []

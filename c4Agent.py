@@ -7,24 +7,58 @@ INF = 1000000
 
 RED = 2
 YELLOW = 1
+DRAW = -1
+
+MAX_MOVES = 42
 
 class c4Agent:
 	def __init__(self, color):
 		self.color = color
 
 	def getReward(self, winColor):
-		if winColor == -1:
-			return 1
+		if winColor == DRAW:
+			return 0
 
 		if self.color == winColor:
-			return 100 #for win
-		return -100 #for loss
+			return 1 #for win
+		return -1 #for loss
 
 	def makeRandomVirtualMove(self, state, cols, color):
 		ok = True
 		action = -1
 		while ok:
-			action = rd.randrange(7)
+			#check for if win possible in next move or loss can be avoided
+			l = len(cols) 
+			grid = c4Grid()
+			#checking win if any on next move for particular color
+			for i in range(l):
+				if cols[i] != -1:
+					state[cols[i]][i] = color
+				if grid.checkWinVirtual(state, cols[i], i):
+					x = cols[i]
+					y = i
+					cols[i] -= 1
+					return state, cols, x, y
+				else:
+					state[cols[i]][i] = 0 #revert change
+
+			#checking loss to avoid, first loss potential found will be used as move
+			color = self.switchColor(color)
+			for i in range(l):
+				if cols[i] != -1:
+					state[cols[i]][i] = color
+				if grid.checkWinVirtual(state, cols[i], i):
+					x = cols[i]
+					y = i
+					cols[i] -= 1
+					color = self.switchColor(color)
+					state[x][y] = color #reverting change made for checking loss potential
+					return state, cols, x, y
+				else:
+					state[cols[i]][i] = 0 #revert change
+			color = self.switchColor(color)
+			#no win found and no loss potential found, continue as normal with random playout
+			action = rd.randrange(l)
 			if cols[action] >= 0 :
 				ok = False
 
@@ -49,12 +83,21 @@ class c4Agent:
 			
 			moveCnt += 1
 			if moveCnt == 42:
-				return 1 #draw reward
+				return 0 #draw reward
 
 			if grid.checkWinVirtual(vgrid, x, y):
 				return self.getReward(colorToMove) #return win 
 
 			colorToMove = self.switchColor(colorToMove)
+
+	def getRewardTerminal(self, winColor):
+		if winColor == DRAW:
+			return 2
+
+		if self.color == winColor:
+			return 10 #for win
+		return -100000 #for loss
+
 
 	def getBestMove(self, actions, n_iterations, root, grid):
 		next_node = None
@@ -65,27 +108,17 @@ class c4Agent:
 		color = YELLOW
 
 		for action in actions:
-			if not node: #check for when playing against human
-				state = prev_node.state.copy()
-				cols = prev_node.cols.copy()
-				moveCntCnt = prev_node.moveCnt.copy()
-				node = Node(0, 0, prev_node, state, cols, moveCnt)
-				node.state[cols[action]][action] = color
-				node.moveCnt += 1
-				grid = c4Grid()
+			prev_node = node
 
-				if grid.checkWinVirtual(node.state, node.cols[action], action):
-					node.isTerminal = True
-					node.winColor = color 
-				if node.moveCnt == 42:
-					node.isTerminal = True
-					node.winColor = -1
-
-				node.cols[action] -= 1
-				break
-			prev_node = node 
-			node = node.children[action]
+			if len(node.children) > 0:
+				node = node.children[action]
+			else:
+				node = None
 			color = self.switchColor(color)
+
+			if not node: #check for when playing against human
+				prev_node.populateNode(color)
+				node = prev_node.children[action]
 
 		if node.checkLeaf():
 			node.populateNode(self.color)
@@ -102,7 +135,7 @@ class c4Agent:
 					#start rollout
 					if curr.isTerminal:
 						# print("is terminal in leaf")
-						reward = self.getReward(curr.winColor)
+						reward = self.getRewardTerminal(curr.winColor)
 						# print("Backpropagate reward")
 						curr.backpropagate(reward)
 						
@@ -129,7 +162,7 @@ class c4Agent:
 
 					if curr.isTerminal:
 						# print("is terminal node ")
-						reward = self.getReward(curr.winColor)
+						reward = self.getRewardTerminal(curr.winColor)
 						# print("Backpropagate reward")
 						curr.backpropagate(reward)
 						
@@ -139,16 +172,12 @@ class c4Agent:
 
 					curr.populateNode(colorToMove)
 
-					if self.color == RED:
-						# print("selecting max in expansion")
-						curr, _ = curr.getMaxUcbNode(root.n)
-					else:
-						# print("selecting min in expansion")
-						curr, _ = curr.getMinUcbNode(root.n)
+
+					curr, _, _ = curr.getMaxUcbNode(root.n)
 
 					if curr.isTerminal:
 						# print("is terminal node after expansion")
-						reward = self.getReward(curr.winColor)
+						reward = self.getRewardTerminal(curr.winColor)
 						# print("Backpropagate reward")
 						curr.backpropagate(reward)
 						
@@ -172,19 +201,13 @@ class c4Agent:
 
 			else:
 				change = True
-				if self.color == RED:
-					# print("going to max node")
-					curr, _ = curr.getMaxUcbNode(root.n)
-				else:
-					# print("going to min ucb node")
-					curr, _ = curr.getMinUcbNode(root.n)
+				curr, _ , _= curr.getMaxUcbNode(root.n)
 
-		if self.color == RED:
-			next_node, action = node.getMaxUcbNode(root.n)
-		else:
-			next_node, action = node.getMinUcbNode(root.n) 
+		next_node, action, ucbs = node.getMaxUcbNode(root.n)
+		
 		# print("sending action %s and next node"%(str(action)))
 		# print("Total iterations", root.n)
+		print(ucbs)
 		return root, action
 
 

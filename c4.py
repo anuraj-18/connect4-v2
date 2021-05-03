@@ -95,6 +95,6 @@ grid = c4Grid()
 yroot = Node(0, 0, None, grid.grid, grid.cols, grid.moveCnt)
 rroot = Node(0, 0, None, grid.grid, grid.cols, grid.moveCnt)
 c4 = c4(yroot, rroot, grid)
-# c4.play(15, 10000)
+c4.play(5, 10000)
 c4.playAgainstHuman(2, 10000)
 
