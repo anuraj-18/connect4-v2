@@ -11,13 +11,25 @@ DRAW = -1
 
 MAX_MOVES = 42
 
+inc_id = 0
+
+"""
+  n1 level = 0, id = 0, pid = 0
+  /\
+ n2 n3  level = 1, id = 1, pid = 0
+"""
+
 class Node:
-	def __init__(self, total_score, ni, parent, state, cols, moveCnt):
+	def __init__(self, total_score, ni, parent, state, cols, moveCnt, n_id, pn_id, level):
 		self.t = total_score
 		self.n = ni
 		self.parent = parent
 		self.children = []
 		self.n_actions = 7
+		
+		self.level = level
+		self.n_id = n_id
+		self.pn_id = pn_id
 
 		self.state = state
 		self.cols = cols
@@ -63,7 +75,9 @@ class Node:
 			next_state = self.state.copy()  #copying next state for child node
 			next_state[cols[i]][i] = player  #making move for child node state
 			
-			node = Node(0, 0, self, next_state, cols, self.moveCnt+1)
+			global inc_id
+			node = Node(0, 0, self, next_state, cols, self.moveCnt+1, inc_id+1, self.n_id, self.level + 1)
+			inc_id += 1
 
 			if grid.checkWinVirtual(next_state, cols[i], i):
 				node.isTerminal = True
