@@ -1,5 +1,4 @@
 import numpy as np 
-import os
 
 from c4Node import Node 
 from c4Agent import c4Agent
